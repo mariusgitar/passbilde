@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffe3ec">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kosedyrpass">
+<title>Kosedyrpass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Caveat:wght@700&family=Courier+Prime:wght@700&display=swap">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+
+/* Layout: three kid-sized steps (pick card → take photo → done), one big action per screen.
+   Single bright look on purpose: no dark theme, every color set explicitly. */
+:root {
+  --tint: #ffe3ec;
+  --fg: #2d2240;
+  --muted: #6e6382;
+  --card: #ffffff;
+  --line: #f0dccb;
+  --line-d: #dcc4ae;
+  --pink: #e2557a;
+  --pink-d: #b83a5c;
+  --blue: #3f8fd2;
+  --blue-d: #2a6aa3;
+  --font: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  color-scheme: light;
+}
+html { background: var(--tint); }
+[hidden] { display: none !important; }
+body {
+  background: var(--tint); color: var(--fg); font-family: var(--font); font-size: 18px;
+  transition: background-color .4s ease;
+}
+.app {
+  max-width: 760px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 40px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 56px; }
+.top h1 { margin: 0; font-size: 1.5rem; font-weight: 700; text-align: center; grid-column: 2; }
+.top h1 span { color: var(--pink); }
+.back {
+  justify-self: start; font: 700 1.1rem var(--font); color: var(--fg);
+  background: var(--card); border: 3px solid var(--line); border-bottom-width: 6px;
+  border-radius: 999px; padding: 10px 16px; min-height: 52px; cursor: pointer; white-space: nowrap;
+}
+.back:active { transform: translateY(2px); border-bottom-width: 4px; }
+section { display: flex; flex-direction: column; gap: 16px; }
+.ask { margin: 4px 0 0; font-size: 2rem; font-weight: 700; text-align: center; text-wrap: balance; line-height: 1.15; }
+
+/* step 1: big picture tiles */
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (min-width: 640px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+.tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 8px;
+  background: var(--card); border: 3px solid var(--line); border-bottom-width: 8px; border-radius: 24px;
+  padding: 12px 10px 10px; cursor: pointer; font: 700 clamp(1rem, 4.6vw, 1.3rem) var(--font); color: var(--fg); min-height: 170px; min-width: 0;
+}
+.tile:active { transform: translateY(4px); border-bottom-width: 4px; }
+.tile .thumb { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 96px; }
+.tile img { max-width: 100%; max-height: 120px; border-radius: 10px; box-shadow: 0 3px 10px rgba(45,34,64,.15); }
+.tile .lbl { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+
+/* chunky toy buttons */
+.big, .mega {
+  font: 700 1.35rem var(--font); color: var(--fg); background: var(--card);
+  border: 3px solid var(--line); border-bottom: 8px solid var(--line-d); border-radius: 24px;
+  min-height: 80px; padding: 10px 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px; text-align: center;
+}
+.big:active, .mega:active { transform: translateY(4px); border-bottom-width: 4px; }
+.mega {
+  flex-direction: column; gap: 4px; min-height: 150px; font-size: 2rem;
+  background: var(--blue); border-color: var(--blue); border-bottom-color: var(--blue-d); color: #fff;
+}
+.mega .ico { font-size: 3.4rem; line-height: 1; }
+.mega.save { min-height: 104px; flex-direction: row; gap: 14px; background: var(--pink); border-color: var(--pink); border-bottom-color: var(--pink-d); }
+.mega.save .ico { font-size: 2.4rem; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.link { font: 600 1.05rem var(--font); color: var(--muted); background: none; border: 0; text-decoration: underline; padding: 12px; cursor: pointer; }
+.big:focus-visible, .mega:focus-visible, .tile:focus-visible, .back:focus-visible, .link:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 4px solid var(--fg); outline-offset: 3px;
+}
+input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+/* step 3: result */
+.stage { position: relative; display: flex; justify-content: center; }
+.preview {
+  display: block; max-width: 100%; max-height: 56vh; width: auto; height: auto;
+  border-radius: 16px; box-shadow: 0 10px 28px rgba(45,34,64,.22);
+  -webkit-user-drag: none; user-select: none;
+}
+.preview.pannable { touch-action: none; cursor: grab; }
+.preview.pop { animation: pop .45s cubic-bezier(.3,1.6,.5,1); }
+@keyframes pop { 0% { transform: scale(.9); } 100% { transform: scale(1); } }
+.stamp {
+  position: absolute; top: 50%; left: 50%; pointer-events: none;
+  font: 700 clamp(1.6rem, 7vw, 3rem) var(--font); color: var(--pink); white-space: nowrap;
+  border: 6px solid var(--pink); border-radius: 20px; padding: 8px 22px; background: rgba(255,255,255,.88);
+  transform: translate(-50%, -50%) rotate(-12deg);
+  animation: slam 1.9s cubic-bezier(.2,.9,.3,1) forwards;
+}
+@keyframes slam {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(-30deg) scale(3); }
+  22% { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(.92); }
+  30% { transform: translate(-50%, -50%) rotate(-12deg) scale(1.04); }
+  38%, 78% { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
+}
+.shake { animation: shake .5s ease; }
+@keyframes shake { 0%,100% { transform: rotate(0); } 20% { transform: rotate(-14deg); } 40% { transform: rotate(12deg); } 60% { transform: rotate(-8deg); } 80% { transform: rotate(5deg); } }
+.msg { min-height: 1.4em; text-align: center; font-weight: 600; font-size: 1.2rem; margin: 0; }
+.hint { font-size: 1rem; color: var(--muted); text-align: center; margin: 0; }
+
+/* grown-up panel */
+.adult { background: rgba(255,255,255,.6); border: 2px dashed var(--line-d); border-radius: 18px; padding: 4px 14px; }
+.adult summary { cursor: pointer; font-weight: 600; color: var(--muted); padding: 12px 0; list-style-position: inside; }
+.adult[open] { padding-bottom: 14px; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fields label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: .9rem; color: var(--muted); min-width: 0; }
+.fields input {
+  font: 500 1.05rem var(--font); color: var(--fg); background: #fff;
+  border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; width: 100%; box-sizing: border-box;
+}
+.fields .wide { grid-column: 1 / -1; }
+.zoom { display: flex; align-items: center; gap: 10px; color: var(--muted); font-weight: 600; margin-top: 12px; }
+.zoom input { flex: 1; min-width: 0; accent-color: var(--pink); }
+.adult .hint { text-align: left; margin-top: 8px; }
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 50; width: 100%; height: 100%; }
+@media (max-width: 400px) { .ask { font-size: 1.7rem; } .big { font-size: 1.2rem; } }
+@media (prefers-reduced-motion: reduce) {
+  .preview.pop, .shake { animation: none; }
+  .stamp { animation: fade 1.9s linear forwards; transform: translate(-50%, -50%) rotate(-12deg); }
+  @keyframes fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <button id="back" class="back" type="button" hidden>← Tilbake</button>
+    <h1>Kosedyr<span>pass</span></h1>
+  </header>
+
+  <section id="s-pick">
+    <h2 class="ask">Hva skal vi lage?</h2>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section id="s-photo" hidden>
+    <h2 class="ask" id="photoTitle">Ta bilde!</h2>
+    <label for="cam" class="mega" role="button"><span class="ico">📷</span><span>Ta bilde</span></label>
+    <label for="lib" class="big" role="button">🖼️ Velg fra bildene</label>
+    <button id="skip" class="link" type="button">Hopp over bildet</button>
+  </section>
+
+  <section id="s-done" hidden>
+    <div class="stage"><img id="preview" class="preview" alt="Kortet ditt" draggable="false"><div id="stamp" class="stamp" hidden></div></div>
+    <button id="save" class="mega save" type="button"><span class="ico">💾</span><span>Lagre</span></button>
+    <p id="msg" class="msg" aria-live="polite"></p>
+    <p id="hint" class="hint" hidden>Hold fingeren på kortet og velg «Arkiver bilde».</p>
+    <div class="pair">
+      <button id="dice" class="big" type="button"><span class="d">🎲</span> Finn på</button>
+      <button id="rename" class="big" type="button"><span class="d">🏷️</span> Nytt navn</button>
+    </div>
+    <div class="pair">
+      <button id="next" class="big" type="button">📷 Lag en til</button>
+      <button id="swap" class="big" type="button">🧩 Annet kort</button>
+    </div>
+    <details class="adult" id="adult">
+      <summary>✏️ Endre tekst (for voksne)</summary>
+      <div class="fields" id="fields"></div>
+      <div class="zoom" id="zoomRow" hidden><span>Zoom</span><input id="zoom" type="range" min="1" max="3" step="0.01" value="1" aria-label="Zoom bildet"></div>
+      <p class="hint" id="panHint" hidden>Dra i kortet for å flytte bildet.</p>
+    </details>
+  </section>
+
+  <input id="cam" type="file" accept="image/*" capture="environment">
+  <input id="lib" type="file" accept="image/*">
+</div>
+
+<canvas id="cv" hidden></canvas>
+
+<script>
+(() => {
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const F = (w, s) => `${w} ${s}px Fredoka, "Trebuchet MS", sans-serif`;
+  const CAV = s => `700 ${s}px Caveat, cursive`;
+  const MONO = s => `700 ${s}px "Courier Prime", monospace`;
+
+  // ---------- small helpers ----------
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const rint = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const pad2 = n => String(n).padStart(2, '0');
+  const now = new Date();
+  const today = `${pad2(now.getDate())}.${pad2(now.getMonth() + 1)}.${now.getFullYear()}`;
+  const randDate = () => `${pad2(rint(1, 28))}.${pad2(rint(1, 12))}.${rint(2016, 2025)}`;
+  const serial = (p, d = 4) => p + rint(10 ** (d - 1), 10 ** d - 1);
+  function hash(s) { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; }
+  function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const poss = n => /[sxz]$/i.test(n) ? n + "'" : n + 's';
+  const code3 = s => (s || '???').toUpperCase().replace(/Æ/g, 'AE').replace(/Ø/g, 'O').replace(/Å/g, 'A').replace(/[^A-Z]/g, '').padEnd(3, 'X').slice(0, 3);
+
+  function rr(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function fit(text, maxW, size, weight = 700) {
+    let s = size; do { ctx.font = F(weight, s); s -= 2; } while (ctx.measureText(text).width > maxW && s > 12);
+  }
+  function txt(t, x, y, font, color, align = 'left', base = 'alphabetic') {
+    ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = base; ctx.fillText(t, x, y);
+  }
+  function fitTxt(t, x, y, maxW, size, color, align = 'left', weight = 700) {
+    fit(t, maxW, size, weight); ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillText(t, x, y);
+  }
+  function wrap(t, x, y, maxW, lh, maxLines, font, color, align = 'left') {
+    ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'alphabetic';
+    const words = (t || '').split(/\s+/); let line = '', n = 0;
+    for (let i = 0; i < words.length; i++) {
+      const test = line ? line + ' ' + words[i] : words[i];
+      if (ctx.measureText(test).width > maxW && line) {
+        if (n === maxLines - 1) { line += '…'; break; }
+        ctx.fillText(line, x, y + n * lh); n++; line = words[i];
+      } else line = test;
+    }
+    ctx.fillText(line, x, y + n * lh); return y + n * lh;
+  }
+  function label(t, x, y, color = '#8a7ba3', size = 19) { txt(t.toUpperCase(), x, y, F(600, size), color); }
+  function star(cx, cy, r, color) {
+    ctx.save(); ctx.fillStyle = color; ctx.beginPath();
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, q = i % 2 ? r * .45 : r; ctx.lineTo(cx + Math.cos(a) * q, cy + Math.sin(a) * q); }
+    ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+  function paw(cx, cy, s, color) {
+    ctx.save(); ctx.fillStyle = color;
+    ctx.beginPath(); ctx.ellipse(cx, cy + s * .35, s * .55, s * .45, 0, 0, Math.PI * 2); ctx.fill();
+    [[-.55, -.25], [-.2, -.55], [.2, -.55], [.55, -.25]].forEach(([dx, dy]) => { ctx.beginPath(); ctx.ellipse(cx + dx * s, cy + dy * s, s * .2, s * .26, 0, 0, Math.PI * 2); ctx.fill(); });
+    ctx.restore();
+  }
+  function waves(W, y0, n, gap, c1, c2, amp = 14) {
+    ctx.save(); ctx.lineWidth = 1.4;
+    for (let i = 0; i < n; i++) {
+      ctx.strokeStyle = i % 2 ? c1 : c2; ctx.beginPath();
+      for (let x = 0; x <= W; x += 8) { const y = y0 + i * gap + Math.sin(x / 60 + i * .5) * amp + Math.sin(x / 23 + i) * 4; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function barcode(x, y, w, h, seedStr, color = '#2d2240') {
+    const r = rng(hash(seedStr)); ctx.fillStyle = color; let cx = x;
+    while (cx < x + w - 6) { const bw = 2 + Math.floor(r() * 5); if (r() > .4) ctx.fillRect(cx, y, bw, h); cx += bw + 2 + Math.floor(r() * 3); }
+  }
+  function sig(prefix, x, y, color, size = 24, align = 'left') {
+    ctx.save(); ctx.font = F(600, size); const pw = ctx.measureText(prefix + ' ').width;
+    ctx.font = CAV(size * 2.3); const lw = ctx.measureText('Louie').width;
+    let sx = align === 'center' ? x - (pw + lw) / 2 : x;
+    txt(prefix, sx, y, F(600, size), color, 'left', 'middle');
+    txt('Louie', sx + pw, y - size * .2, CAV(size * 2.3), color, 'left', 'middle');
+    ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.beginPath();
+    ctx.moveTo(sx + pw - 4, y + size * 1.05); ctx.quadraticCurveTo(sx + pw + lw / 2, y + size * 1.45, sx + pw + lw + 14, y + size * .85); ctx.stroke();
+    ctx.restore();
+  }
+
+  // ---------- photo ----------
+  const S = { tpl: 'pass', photo: null, zoom: 1, off: { x: 0, y: 0 }, name: '', skipped: false, vals: {} };
+  let frame = null;
+
+  function cameraGlyph(cx, cy, s) {
+    ctx.save(); ctx.fillStyle = '#b9a6d6';
+    rr(cx - s, cy - s * .6, s * 2, s * 1.3, s * .25); ctx.fill();
+    rr(cx - s * .35, cy - s * .85, s * .7, s * .4, s * .1); ctx.fill();
+    ctx.fillStyle = '#efe6fa'; ctx.beginPath(); ctx.arc(cx, cy + s * .05, s * .42, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#b9a6d6'; ctx.beginPath(); ctx.arc(cx, cy + s * .05, s * .26, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  function photoBox(x, y, w, h, r, circle = false) {
+    ctx.save();
+    if (circle) { ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, w / 2, 0, Math.PI * 2); } else rr(x, y, w, h, r);
+    ctx.clip();
+    if (S.photo) {
+      const p = S.photo, s = Math.max(w / p.width, h / p.height) * S.zoom;
+      const dw = p.width * s, dh = p.height * s;
+      const mx = (dw - w) / 2 / dw, my = (dh - h) / 2 / dh;
+      const ox = Math.max(-mx, Math.min(mx, S.off.x)), oy = Math.max(-my, Math.min(my, S.off.y));
+      ctx.drawImage(p, x + (w - dw) / 2 + ox * dw, y + (h - dh) / 2 + oy * dh, dw, dh);
+      frame = { dw, dh, mx, my };
+    } else {
+      ctx.fillStyle = '#efe6fa'; ctx.fillRect(x, y, w, h);
+      const s = Math.min(w, h);
+      cameraGlyph(x + w / 2, y + h / 2 - s * .06, s * .2);
+      txt('Legg til bilde', x + w / 2, y + h / 2 + s * .26, F(600, Math.max(16, s * .075)), '#7d6a9b', 'center');
+    }
+    ctx.restore();
+  }
+
+  // ---------- templates ----------
+  const KINDS = ['Bjørn', 'Kanin', 'Hund', 'Katt', 'Enhjørning', 'Dinosaur', 'Koala', 'Rev', 'Ugle', 'Panda', 'Menneske', 'Ekorn'];
+  const T = [
+    {
+      id: 'pass', label: '🛂 Pass', size: [1200, 840],
+      fields: [
+        { k: 'kind', l: 'Type', o: KINDS },
+        { k: 'born', l: 'Bursdag', g: randDate },
+        { k: 'owner', l: 'Bor hos', o: ['Louie'], keep: true },
+        { k: 'power', l: 'Superkraft', o: ['Verdens beste klem', 'Kan sove hvor som helst', 'Usynlig om natten', 'Jager bort mareritt', 'Supermyk', 'Kan snakke med katter', 'Holder på hemmeligheter'] },
+      ],
+      no: () => serial('KOS'),
+      draw(v, W, H) {
+        rr(0, 0, W, H, 36); ctx.clip();
+        const g = ctx.createLinearGradient(0, 0, W, H);
+        g.addColorStop(0, '#e8f4ff'); g.addColorStop(.5, '#fff1f6'); g.addColorStop(1, '#fff8e1');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+        waves(W, 120, 26, 26, 'rgba(90,169,230,.16)', 'rgba(226,85,122,.12)');
+        ctx.fillStyle = '#e2557a'; ctx.fillRect(0, 0, W, 104);
+        txt('KOSEDYRPASS', 56, 54, F(700, 50), '#fff', 'left', 'middle');
+        ctx.font = F(700, 50); const tw = 56 + ctx.measureText('KOSEDYRPASS').width;
+        star(tw + 30, 50, 14, '#ffe17a'); star(tw + 58, 34, 8, '#ffe17a');
+        txt('KOSEDYRLANDET', W - 56, 40, F(600, 22), '#fff', 'right', 'middle');
+        txt('Pass for kosedyr · Cuddly passport', W - 56, 70, F(400, 19), '#fff', 'right', 'middle');
+        ctx.fillStyle = '#fff'; rr(48, 132, 356, 446, 26); ctx.fill();
+        photoBox(56, 140, 340, 430, 20);
+        const fx = 450, cw = 330;
+        label('Navn / Name', fx, 158); fitTxt(v.name, fx, 220, 690, 64, '#2d2240');
+        label('Type / Kind', fx, 270); fitTxt(v.kind, fx, 318, cw, 42, '#2d2240');
+        label('Bursdag / Birthday', fx + cw + 30, 270); fitTxt(v.born, fx + cw + 30, 318, cw, 42, '#2d2240');
+        label('Bor hos / Lives with', fx, 366); fitTxt(v.owner, fx, 414, cw, 42, '#2d2240');
+        label('Passnummer / No.', fx + cw + 30, 366); fitTxt(v._no, fx + cw + 30, 414, cw, 42, '#2d2240');
+        label('Superkraft / Superpower', fx, 462); fitTxt(v.power, fx, 510, 520, 42, '#2d2240');
+        label('Gyldig til / Expires', fx, 558); fitTxt('Aldri!', fx, 600, cw, 38, '#2d2240');
+        ctx.save(); ctx.translate(1050, 520); ctx.rotate(-.22);
+        ctx.strokeStyle = ctx.fillStyle = 'rgba(226,85,122,.85)';
+        ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(0, 0, 76, 0, Math.PI * 2); ctx.stroke();
+        ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, 64, 0, Math.PI * 2); ctx.stroke();
+        txt('GODKJENT', 0, -12, F(700, 25), 'rgba(226,85,122,.85)', 'center', 'middle');
+        paw(0, 28, 24, 'rgba(226,85,122,.85)'); ctx.restore();
+        ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillRect(0, 615, W, 112);
+        const pc = ['#e2557a', '#5aa9e6', '#f2b705', '#6fbf8a'];
+        for (let i = 0; i < 4; i++) { paw(80 + i * 62, 671, 20, pc[i % 4]); paw(W - 80 - i * 62, 671, 20, pc[(i + 2) % 4]); }
+        txt('VELKOMMEN TIL KOSEDYRLANDET', W / 2, 673, F(700, 30), '#3c3156', 'center', 'middle');
+        ctx.fillStyle = '#5aa9e6'; ctx.fillRect(0, 727, W, H - 727);
+        sig('Utstedt av passsjef', 56, 782, '#fff');
+        paw(W - 150, 784, 30, 'rgba(255,255,255,.9)'); paw(W - 80, 770, 22, 'rgba(255,255,255,.6)');
+      }
+    },
+    {
+      id: 'forer', label: '🚗 Førerkort', size: [1200, 760],
+      fields: [
+        { k: 'born', l: 'Født', g: randDate },
+        { k: 'kl', l: 'Kan kjøre', o: ['Sparkesykkel, Pappas skulder, Handlevogn', 'Trehjulssykkel, Pulk, Dukkevogn', 'Sofatog, Bamsebuss, Rakett', 'Lego-bil, Badekarbåt, Sklie', 'Traktor, Akebrett, Bestemors fang'], wide: true },
+        { k: 'merk', l: 'Merknad', o: ['Må ha klem før kjøring', 'Kjører bare i pyjamas', 'Maks fart: sneglefart', 'Må ha kjeks i hanskerommet', 'Tuter alltid to ganger'], wide: true },
+      ],
+      no: () => serial('FK', 6),
+      draw(v, W, H) {
+        rr(0, 0, W, H, 40); ctx.clip();
+        const g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#ffd3e1'); g.addColorStop(1, '#ffeedd');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+        waves(W, 170, 20, 28, 'rgba(176,48,90,.10)', 'rgba(255,160,90,.14)', 18);
+        ctx.fillStyle = '#2b5fb8'; rr(56, 40, 116, 116, 16); ctx.fill();
+        for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; star(114 + Math.cos(a) * 38, 98 + Math.sin(a) * 38, 7, '#ffd84a'); }
+        txt('KL', 114, 99, F(700, 26), '#fff', 'center', 'middle');
+        txt('FØRERKORT', 200, 100, F(700, 64), '#b0305a');
+        txt('Kosedyrlandet · Driving licence', 202, 140, F(500, 24), '#8a4a64');
+        // car doodle
+        ctx.save(); ctx.translate(1010, 80);
+        ctx.fillStyle = '#2b5fb8'; rr(-90, -10, 180, 50, 18); ctx.fill(); rr(-50, -42, 100, 40, 14); ctx.fill();
+        ctx.fillStyle = '#cfe4ff'; rr(-38, -34, 34, 26, 6); ctx.fill(); rr(4, -34, 34, 26, 6); ctx.fill();
+        ctx.fillStyle = '#2d2240'; [-50, 50].forEach(x => { ctx.beginPath(); ctx.arc(x, 42, 20, 0, Math.PI * 2); ctx.fill(); });
+        ctx.fillStyle = '#fff'; [-50, 50].forEach(x => { ctx.beginPath(); ctx.arc(x, 42, 8, 0, Math.PI * 2); ctx.fill(); });
+        ctx.restore();
+        ctx.fillStyle = '#fff'; rr(52, 182, 316, 396, 22); ctx.fill();
+        photoBox(60, 190, 300, 380, 18);
+        const fx = 410, c = '#b0305a', d = '#2d2240';
+        label('1. Navn', fx, 205, c); fitTxt(v.name, fx, 262, 730, 56, d);
+        label('3. Født', fx, 310, c); fitTxt(v.born, fx, 352, 340, 36, d);
+        label('4a. Utstedt', fx + 370, 310, c); fitTxt(today, fx + 370, 352, 340, 36, d);
+        label('4b. Gyldig til', fx, 400, c); fitTxt('Aldri!', fx, 442, 340, 36, d);
+        label('5. Nummer', fx + 370, 400, c); fitTxt(v._no, fx + 370, 442, 340, 36, d);
+        label('9. Kan kjøre', fx, 490, c); wrap(v.kl, fx, 530, 740, 38, 2, F(700, 32), d);
+        label('12. Merknad', 60, 630, c); fitTxt(v.merk, 250, 632, 880, 32, d);
+        ctx.fillStyle = '#b0305a'; ctx.fillRect(0, 668, W, H - 668);
+        sig('Godkjent av trafikksjef', 60, 712, '#fff');
+        paw(W - 90, 712, 26, 'rgba(255,255,255,.85)');
+      }
+    },
+    {
+      id: 'koala', label: '🐨 Koalaklubben', size: [1200, 760],
+      fields: [
+        { k: 'rolle', l: 'Rolle', o: ['Medlem', 'Æresmedlem', 'Klemmesjef', 'Snorkeansvarlig', 'Eukalyptus-ekspert', 'Hemmelig agent'] },
+        { k: 'siden', l: 'Medlem siden', g: () => String(rint(2019, now.getFullYear())) },
+        { k: 'regel', l: 'Klubbregel', o: ['Alltid klem før leggetid', 'Ingen skal sove alene', 'Eukalyptus på fredager', 'Alle hilser med en vink', 'Hemmeligheter deles bare under dyna'], wide: true },
+      ],
+      no: () => serial('KK-', 3),
+      draw(v, W, H) {
+        rr(0, 0, W, H, 40); ctx.clip();
+        const g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#d3ead8'); g.addColorStop(1, '#eef7e6');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+        const r = rng(7);
+        for (let i = 0; i < 26; i++) {
+          ctx.save(); ctx.translate(r() * W, 180 + r() * 460); ctx.rotate(r() * Math.PI);
+          ctx.fillStyle = r() > .5 ? 'rgba(110,170,125,.18)' : 'rgba(150,190,160,.22)';
+          ctx.beginPath(); ctx.ellipse(0, 0, 34, 14, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        }
+        // koala face
+        ctx.save(); ctx.translate(112, 100);
+        ctx.fillStyle = '#9aa3ad'; [-52, 52].forEach(x => { ctx.beginPath(); ctx.arc(x, -30, 36, 0, Math.PI * 2); ctx.fill(); });
+        ctx.fillStyle = '#f1c9d4'; [-52, 52].forEach(x => { ctx.beginPath(); ctx.arc(x, -30, 20, 0, Math.PI * 2); ctx.fill(); });
+        ctx.fillStyle = '#aab3bd'; ctx.beginPath(); ctx.arc(0, 0, 58, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#2d2240'; [-22, 22].forEach(x => { ctx.beginPath(); ctx.arc(x, -10, 7, 0, Math.PI * 2); ctx.fill(); });
+        ctx.beginPath(); ctx.ellipse(0, 16, 16, 22, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        txt('KOALAKLUBBEN', 196, 102, F(700, 64), '#2f5d3a');
+        txt('Medlemskort · Member card', 198, 142, F(500, 24), '#4f7a58');
+        txt(v._no, W - 56, 100, MONO(34), '#2f5d3a', 'right');
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(230, 390, 166, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#6aa878'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(230, 390, 166, 0, Math.PI * 2); ctx.stroke();
+        photoBox(78, 238, 304, 304, 0, true);
+        const fx = 450, c = '#4f7a58', d = '#1f3d27';
+        label('Medlem', fx, 225, c); fitTxt(v.name, fx, 285, 700, 58, d);
+        label('Rolle', fx, 335, c); fitTxt(v.rolle, fx, 380, 400, 38, d);
+        label('Medlem siden', fx + 420, 335, c); fitTxt(v.siden, fx + 420, 380, 280, 38, d);
+        label('Klubbregel', fx, 432, c); wrap('«' + v.regel + '»', fx, 475, 700, 40, 2, F(600, 32), d);
+        ctx.fillStyle = '#2f5d3a'; ctx.fillRect(0, 650, W, H - 650);
+        sig('Klubbsjef', 60, 700, '#fff');
+        txt('Kos · Klem · Eukalyptus', W - 60, 706, F(600, 24), '#d3ead8', 'right', 'middle');
+      }
+    },
+    {
+      id: 'diplom', label: '🏅 Diplom', size: [1200, 850],
+      fields: [
+        { k: 'tittel', l: 'Diplom for', o: ['Årets beste klemmer', 'Modigste kosedyr i mørket', 'Mester i å sove', 'Verdens snilleste', 'Beste turkamerat', 'Årets lytter'], wide: true },
+        { k: 'fordi', l: 'Fordi', o: ['Har holdt vakt hele natten uten å sovne', 'Er alltid klar for en klem', 'Har vært med på alle eventyr', 'Trøster når noen er lei seg', 'Har aldri sagt nei til lek'], wide: true },
+      ],
+      no: () => '',
+      draw(v, W, H) {
+        ctx.fillStyle = '#fffaf0'; rr(0, 0, W, H, 24); ctx.fill();
+        ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 10; rr(24, 24, W - 48, H - 48, 18); ctx.stroke();
+        ctx.lineWidth = 2; rr(46, 46, W - 92, H - 92, 12); ctx.stroke();
+        [[70, 70], [W - 70, 70], [70, H - 70], [W - 70, H - 70]].forEach(([x, y]) => star(x, y, 16, '#c9a227'));
+        // medal
+        ctx.save(); ctx.translate(1010, 210);
+        ctx.fillStyle = '#e2557a'; ctx.save(); ctx.rotate(.3); ctx.fillRect(-36, 20, 34, 120); ctx.restore();
+        ctx.fillStyle = '#3f8fd2'; ctx.save(); ctx.rotate(-.3); ctx.fillRect(2, 20, 34, 120); ctx.restore();
+        const mg = ctx.createRadialGradient(-20, -20, 10, 0, 0, 80); mg.addColorStop(0, '#ffe98a'); mg.addColorStop(1, '#c9a227');
+        ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(0, 0, 76, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#a8841a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, 60, 0, Math.PI * 2); ctx.stroke();
+        star(0, 0, 38, '#fff6c8'); ctx.restore();
+        txt('DIPLOM', 600, 170, F(700, 100), '#c9a227', 'center');
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(250, 450, 170, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(250, 450, 170, 0, Math.PI * 2); ctx.stroke();
+        photoBox(92, 292, 316, 316, 0, true);
+        const cx = 780;
+        txt('tildeles', cx, 300, F(500, 30), '#8a7a5a', 'center');
+        fitTxt(v.name, cx, 380, 640, 72, '#2d2240', 'center');
+        txt('for å være', cx, 440, F(500, 30), '#8a7a5a', 'center');
+        fitTxt(v.tittel, cx, 510, 660, 52, '#c0395f', 'center');
+        wrap(v.fordi, cx, 575, 640, 38, 2, F(500, 30), '#4a4060', 'center');
+        txt('Dato: ' + today, 130, 740, F(600, 26), '#4a4060');
+        ctx.strokeStyle = '#4a4060'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(780, 752); ctx.lineTo(1080, 752); ctx.stroke();
+        txt('Louie', 930, 725, CAV(72), '#2d2240', 'center');
+        txt('Diplomsjef', 930, 784, F(600, 22), '#8a7a5a', 'center');
+      }
+    },
+    {
+      id: 'billett', label: '✈️ Flybillett', size: [1400, 560],
+      fields: [
+        { k: 'fra', l: 'Fra', o: ['Senga', 'Stua', 'Kjøkkenet', 'Barnehagen', 'Badet'] },
+        { k: 'til', l: 'Til', o: ['Kosedyrlandet', 'Månen', 'Godteriøya', 'Drømmeland', 'Sjokoladefabrikken'] },
+        { k: 'avg', l: 'Avgang', o: ['Leggetid', 'Etter middag', 'Kl. 07:00', 'Når sola står opp', 'Kl. 19:30'] },
+        { k: 'sete', l: 'Sete', o: ['1A', '3C', '12F', 'Fanget', 'Vindusplass'] },
+      ],
+      no: () => pick(['B', 'K', 'S', 'Z']) + rint(1, 9),
+      draw(v, W, H) {
+        ctx.fillStyle = '#ffffff'; rr(0, 0, W, H, 30); ctx.fill();
+        ctx.save(); rr(0, 0, W, H, 30); ctx.clip();
+        ctx.fillStyle = '#2b6fd6'; ctx.fillRect(0, 0, W, 110);
+        waves(W, 150, 13, 30, 'rgba(43,111,214,.07)', 'rgba(226,85,122,.06)', 10);
+        ctx.restore();
+        txt('KOS AIR', 50, 56, F(700, 50), '#fff', 'left', 'middle');
+        star(270, 40, 12, '#ffd84a');
+        txt('BOARDINGKORT · BOARDING PASS', 990, 58, F(600, 22), '#d6e6ff', 'right', 'middle');
+        txt('KOS AIR', 1050, 56, F(700, 34), '#fff', 'left', 'middle');
+        // perforation
+        ctx.save(); ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath(); ctx.arc(1020, 0, 24, 0, Math.PI * 2); ctx.arc(1020, H, 24, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        ctx.save(); ctx.strokeStyle = '#b8c4d8'; ctx.lineWidth = 3; ctx.setLineDash([10, 10]);
+        ctx.beginPath(); ctx.moveTo(1020, 30); ctx.lineTo(1020, H - 30); ctx.stroke(); ctx.restore();
+        photoBox(50, 145, 210, 260, 16);
+        const d = '#1d2b4a', c = '#5b6b8a';
+        label('Passasjer', 300, 160, c); fitTxt(v.name, 300, 208, 680, 44, d);
+        const A = code3(v.fra), B = code3(v.til);
+        txt(A, 300, 320, F(700, 96), d); txt(B, 980, 320, F(700, 96), d, 'right');
+        fitTxt(v.fra, 300, 358, 220, 24, c, 'left', 500); fitTxt(v.til, 980, 358, 220, 24, c, 'right', 500);
+        ctx.save(); ctx.strokeStyle = '#2b6fd6'; ctx.lineWidth = 3; ctx.setLineDash([8, 8]);
+        ctx.beginPath(); ctx.moveTo(530, 290); ctx.quadraticCurveTo(640, 240, 750, 290); ctx.stroke(); ctx.restore();
+        ctx.save(); ctx.translate(640, 262); ctx.rotate(.05); ctx.fillStyle = '#2b6fd6';
+        ctx.beginPath(); ctx.moveTo(30, 0); ctx.lineTo(-24, -8); ctx.lineTo(-24, 8); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(-10, -26); ctx.lineTo(-18, -26); ctx.lineTo(-6, 0); ctx.lineTo(-18, 26); ctx.lineTo(-10, 26); ctx.closePath(); ctx.fill();
+        ctx.restore();
+        [['Avgang', v.avg], ['Gate', v._no], ['Sete', v.sete]].forEach(([l, val], i) => {
+          const x = 300 + i * 230; label(l, x, 420, c); fitTxt(val, x, 462, 210, 36, d);
+        });
+        sig('Utstedt av flysjef', 50, 505, '#2b6fd6', 20);
+        // stub
+        label('Passasjer', 1050, 160, c); fitTxt(v.name, 1050, 200, 320, 34, d);
+        txt(A + ' → ' + B, 1050, 270, F(700, 50), d);
+        label('Sete', 1050, 320, c); fitTxt(v.sete, 1050, 360, 150, 34, d);
+        label('Gate', 1230, 320, c); fitTxt(v._no, 1230, 360, 140, 34, d);
+        barcode(1050, 400, 320, 90, v.name + v.til + v.sete, d);
+        txt('KOS' + hash(v.name + v.til).toString().slice(0, 8), 1210, 516, MONO(20), c, 'center');
+      }
+    },
+    {
+      id: 'bibl', label: '📚 Bibliotekkort', size: [1200, 760],
+      fields: [
+        { k: 'fav', l: 'Favoritteventyr', o: ['Bukkene Bruse', 'Gullhår og de tre bjørnene', 'Rødhette og ulven', 'Askeladden og de gode hjelperne', 'Pannekaka', 'Kjetta på Dovre'], wide: true },
+        { k: 'kan', l: 'Kan låne', o: ['Uendelig mange bøker', '3 bøker og en kjeks', 'Alle bøker om bjørner', 'Bare bøker med bilder', '100 bøker hver dag'], wide: true },
+      ],
+      no: () => serial('', 8),
+      draw(v, W, H) {
+        rr(0, 0, W, H, 36); ctx.clip();
+        ctx.fillStyle = '#f4e2b8'; ctx.fillRect(0, 0, W, H);
+        ctx.strokeStyle = 'rgba(160,110,50,.12)'; ctx.lineWidth = 2;
+        for (let y = 150; y < H; y += 34) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+        ctx.fillStyle = '#c2452d'; ctx.fillRect(0, 0, W, 120);
+        txt('BIBLIOTEKKORT', 56, 58, F(700, 54), '#fff', 'left', 'middle');
+        txt('Kosedyrlandets bibliotek', 58, 98, F(500, 22), '#ffd9cf', 'left', 'middle');
+        // book stack
+        [['#3f8fd2', 0, 0], ['#ffd84a', 14, -26], ['#6aa878', 4, -52]].forEach(([col, dx, dy]) => {
+          ctx.fillStyle = col; rr(W - 220 + dx, 70 + dy, 150, 24, 4); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(W - 200 + dx, 79 + dy, 60, 4);
+        });
+        ctx.fillStyle = '#fff'; rr(52, 162, 296, 356, 20); ctx.fill();
+        photoBox(60, 170, 280, 340, 16);
+        const fx = 390, c = '#9a4a2e', d = '#3a2516';
+        label('Låner', fx, 192, c); fitTxt(v.name, fx, 250, 750, 56, d);
+        label('Favoritteventyr', fx, 300, c); wrap(v.fav, fx, 345, 750, 42, 2, F(700, 36), d);
+        label('Lånekortnr.', fx, 440, c); fitTxt(v._no, fx, 480, 330, 34, d);
+        label('Kan låne', fx + 360, 440, c); fitTxt(v.kan, fx + 360, 480, 390, 32, d);
+        // due-date grid
+        ctx.strokeStyle = '#9a4a2e'; ctx.lineWidth = 2; ctx.fillStyle = 'rgba(255,255,255,.55)';
+        rr(60, 540, 690, 110, 10); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(60, 575); ctx.lineTo(750, 575);
+        for (let i = 1; i < 4; i++) { ctx.moveTo(60 + i * 172.5, 540); ctx.lineTo(60 + i * 172.5, 650); }
+        ctx.stroke();
+        txt('LEVERES INNEN', 72, 566, F(600, 17), c);
+        const r = rng(hash(v.name)); const dates = [today, ...[0, 0, 0].map(() => `${pad2(1 + Math.floor(r() * 28))}.${pad2(1 + Math.floor(r() * 12))}`)];
+        dates.forEach((dt, i) => {
+          ctx.save(); ctx.translate(146 + i * 172.5, 616); ctx.rotate((r() - .5) * .15);
+          txt(i === 0 ? dt.slice(0, 5) : dt, 0, 0, MONO(28), 'rgba(110,60,160,.8)', 'center', 'middle'); ctx.restore();
+        });
+        barcode(800, 540, 340, 84, v._no, d);
+        txt(v._no, 970, 650, MONO(22), d, 'center');
+        ctx.fillStyle = '#c2452d'; ctx.fillRect(0, 680, W, H - 680);
+        sig('Bibliotekar', 60, 718, '#fff', 22);
+      }
+    },
+    {
+      id: 'samle', label: '⭐ Samlekort', size: [750, 1050],
+      fields: [
+        { k: 'type', l: 'Type', o: ['Myk-type', 'Klem-type', 'Sove-type', 'Lek-type', 'Magi-type', 'Turbo-type'] },
+        { k: 'trekk', l: 'Spesialtrekk', o: ['Supersnork', 'Klemmestorm', 'Usynlig under dyna', 'Trøsteskjold', 'Tulleangrep', 'Drømmestråle'] },
+        { k: 'myk', l: 'Myk (1–10)', g: () => String(rint(4, 10)), num: true },
+        { k: 'snill', l: 'Snill (1–10)', g: () => String(rint(4, 10)), num: true },
+        { k: 'fart', l: 'Fart (1–10)', g: () => String(rint(1, 10)), num: true },
+        { k: 'klem', l: 'Klem (1–10)', g: () => String(rint(5, 10)), num: true },
+      ],
+      no: () => '#' + String(rint(1, 150)).padStart(3, '0'),
+      draw(v, W, H) {
+        const hg = ctx.createLinearGradient(0, 0, W, H);
+        ['#ff9ec2', '#ffd36e', '#8fe3c0', '#8ec5ff', '#c9a2ff', '#ff9ec2'].forEach((c, i) => hg.addColorStop(i / 5, c));
+        ctx.fillStyle = hg; rr(0, 0, W, H, 36); ctx.fill();
+        ctx.fillStyle = '#fffdf6'; rr(26, 26, W - 52, H - 52, 24); ctx.fill();
+        fitTxt(v.name, 56, 98, 440, 50, '#2d2240');
+        const stats = ['myk', 'snill', 'fart', 'klem'].map(k => Math.max(0, Math.min(10, parseInt(v[k], 10) || 0)));
+        const stars = Math.max(1, Math.min(5, Math.round(stats.reduce((a, b) => a + b, 0) / 8)));
+        for (let i = 0; i < 5; i++) star(W - 70 - i * 34, 82, 14, i < stars ? '#f2b705' : '#e6dfd0');
+        ctx.fillStyle = '#fff'; rr(48, 124, W - 96, 486, 22); ctx.fill();
+        ctx.strokeStyle = hg; ctx.lineWidth = 6; rr(48, 124, W - 96, 486, 22); ctx.stroke();
+        photoBox(56, 132, W - 112, 470, 18);
+        ctx.font = F(700, 26); const tw = ctx.measureText(v.type).width + 40;
+        ctx.fillStyle = '#2d2240'; rr(70, 560, tw, 44, 22); ctx.fill();
+        txt(v.type, 90, 583, F(700, 26), '#fff', 'left', 'middle');
+        const names = ['Myk', 'Snill', 'Fart', 'Klem'], cols = ['#ff7aa8', '#6fd3a6', '#ffb347', '#8ab8ff'];
+        stats.forEach((s, i) => {
+          const y = 660 + i * 54;
+          txt(names[i], 66, y + 14, F(700, 28), '#2d2240', 'left', 'middle');
+          ctx.fillStyle = '#efe8da'; rr(200, y, 420, 28, 14); ctx.fill();
+          if (s > 0) { ctx.fillStyle = cols[i]; rr(200, y, Math.max(28, 42 * s), 28, 14); ctx.fill(); }
+          txt(String(s), 684, y + 14, F(700, 30), '#2d2240', 'right', 'middle');
+        });
+        label('Spesialtrekk', 66, 896, '#8a7ba3', 18);
+        fitTxt(v.trekk, 66, 940, 620, 40, '#c0395f');
+        txt('Kosedyrlandet samlekort · utstedt av Louie', 66, 994, F(500, 20), '#8a7ba3');
+        txt(v._no, W - 66, 994, F(700, 22), '#8a7ba3', 'right');
+      }
+    },
+    {
+      id: 'invit', label: '🎉 Invitasjon', size: [900, 1200],
+      fields: [
+        { k: 'anl', l: 'Hva slags fest', o: ['bursdag', 'teselskap', 'pyjamasfest', 'bryllup', 'piknik', 'disko'] },
+        { k: 'naar', l: 'Når', o: ['Lørdag kl. 12', 'I morgen etter frokost', 'Søndag kl. 16', 'I dag kl. 17'] },
+        { k: 'hvor', l: 'Hvor', o: ['Sofaen', 'Barnerommet', 'Under bordet', 'I hagen', 'Hos Louie'] },
+        { k: 'tamed', l: 'Ta med', o: ['Pyjamas', 'Godt humør', 'En liten gave', 'En kosedyrvenn', 'Dansesko'] },
+      ],
+      no: () => String(rint(1, 1e6)),
+      draw(v, W, H) {
+        ctx.fillStyle = '#fff0f5'; rr(0, 0, W, H, 30); ctx.fill();
+        ctx.save(); rr(0, 0, W, H, 30); ctx.clip();
+        const r = rng(hash(v._no)), cols = ['#ff7aa8', '#ffd36e', '#6fd3a6', '#8ab8ff', '#c9a2ff'];
+        for (let i = 0; i < 90; i++) {
+          ctx.save(); ctx.translate(r() * W, r() * H); ctx.rotate(r() * Math.PI); ctx.fillStyle = cols[i % 5];
+          r() > .5 ? ctx.fillRect(-9, -4, 18, 8) : (ctx.beginPath(), ctx.arc(0, 0, 6, 0, Math.PI * 2), ctx.fill());
+          ctx.restore();
+        }
+        ctx.restore();
+        fitTxt('DU ER INVITERT!', W / 2, 140, 800, 80, '#e2557a', 'center');
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(W / 2, 400, 200, 0, Math.PI * 2); ctx.fill();
+        ctx.save(); ctx.strokeStyle = '#e2557a'; ctx.lineWidth = 5; ctx.setLineDash([14, 10]);
+        ctx.beginPath(); ctx.arc(W / 2, 400, 214, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+        photoBox(W / 2 - 186, 214, 372, 372, 0, true);
+        txt('til', W / 2, 670, F(500, 34), '#8a7ba3', 'center');
+        fitTxt(poss(v.name) + ' ' + v.anl, W / 2, 745, 800, 66, '#2d2240', 'center');
+        ctx.fillStyle = 'rgba(255,255,255,.92)'; rr(90, 800, 720, 250, 24); ctx.fill();
+        [['Når', v.naar], ['Hvor', v.hvor], ['Ta med', v.tamed]].forEach(([l, val], i) => {
+          const y = 865 + i * 72; label(l, 130, y, '#e2557a', 22); fitTxt(val, 300, y + 2, 470, 38, '#2d2240');
+        });
+        sig('Godkjent av festsjef', W / 2, 1120, '#e2557a', 24, 'center');
+      }
+    },
+  ];
+  const byId = Object.fromEntries(T.map(t => [t.id, t]));
+
+  function freshVals(t, old = {}) {
+    const v = {};
+    t.fields.forEach(fd => { v[fd.k] = fd.keep && old[fd.k] != null ? old[fd.k] : (fd.g ? fd.g() : pick(fd.o)); });
+    v._no = t.no(); return v;
+  }
+  T.forEach(t => S.vals[t.id] = freshVals(t));
+
+  // ---------- kid UI ----------
+  const META = {
+    pass:    { e: '🛂', n: 'Pass',         bg: '#ffe3ec', stamp: 'GODKJENT!',   ask: 'Hvem skal ha pass?' },
+    forer:   { e: '🚗', n: 'Førerkort',    bg: '#ffe9d6', stamp: 'BESTÅTT!',    ask: 'Hvem skal kjøre?' },
+    koala:   { e: '🐨', n: 'Koalaklubben', bg: '#dff1e2', stamp: 'VELKOMMEN!',  ask: 'Hvem blir med i klubben?' },
+    diplom:  { e: '🏅', n: 'Diplom',       bg: '#fff3c9', stamp: 'GRATULERER!', ask: 'Hvem får diplom?' },
+    billett: { e: '✈️', n: 'Flybillett',   bg: '#dcecff', stamp: 'GOD TUR!',    ask: 'Hvem skal fly?' },
+    bibl:    { e: '📚', n: 'Bibliotek',    bg: '#f6e6c8', stamp: 'GOD LESING!', ask: 'Hvem skal låne bøker?' },
+    samle:   { e: '⭐', n: 'Samlekort',    bg: '#efe2ff', stamp: 'SJELDEN!',    ask: 'Hvem blir samlekort?' },
+    invit:   { e: '🎉', n: 'Invitasjon',   bg: '#ffe0f0', stamp: 'HURRA!',      ask: 'Hvem har fest?' },
+  };
+  const PRE = ['Kaptein', 'Prinsesse', 'Herr', 'Fru', 'Lille', 'Store', 'Sir', 'Doktor', 'Professor', 'Superhelten', 'Dronning', 'Kong'];
+  const NAMES = ['Klemmeklump', 'Myk', 'Snuskepus', 'Pelsedott', 'Tuss', 'Brumm', 'Fløffy', 'Snorke', 'Knøttet', 'Bobla', 'Dotten', 'Fnugg', 'Sokken', 'Pippi-Lo'];
+  const genName = () => pick(PRE) + ' ' + pick(NAMES);
+  S.name = genName();
+
+  const $ = id => document.getElementById(id);
+  const screens = { pick: $('s-pick'), photo: $('s-photo'), done: $('s-done') };
+  const preview = $('preview'), msg = $('msg');
+  let screen = 'pick';
+
+  function show(name) {
+    screen = name;
+    Object.entries(screens).forEach(([k, el]) => el.hidden = k !== name);
+    $('back').hidden = name === 'pick';
+    document.body.style.backgroundColor = name === 'pick' ? '' : META[S.tpl].bg;
+    document.documentElement.style.backgroundColor = document.body.style.backgroundColor;
+    if (name === 'pick') renderThumbs();
+    if (name === 'photo') $('photoTitle').textContent = META[S.tpl].ask;
+    window.scrollTo(0, 0);
+  }
+
+  // rendering
+  function renderNow(id) {
+    const t = byId[id], [W, H] = t.size;
+    if (cv.width !== W) cv.width = W; if (cv.height !== H) cv.height = H;
+    ctx.clearRect(0, 0, W, H); ctx.save();
+    const v = Object.assign({}, S.vals[t.id], { name: S.name.trim() || '???' });
+    Object.keys(v).forEach(k => { if (typeof v[k] === 'string' && !v[k].trim()) v[k] = '—'; });
+    t.draw(v, W, H); ctx.restore();
+  }
+  let raf = 0;
+  function draw() {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => { renderNow(S.tpl); preview.src = cv.toDataURL('image/png'); });
+  }
+  const small = document.createElement('canvas'), sctx = small.getContext('2d');
+  const thumbImgs = {};
+  function renderThumbs() {
+    T.forEach(t => {
+      renderNow(t.id);
+      const sc = 320 / Math.max(cv.width, cv.height);
+      small.width = Math.round(cv.width * sc); small.height = Math.round(cv.height * sc);
+      sctx.clearRect(0, 0, small.width, small.height); sctx.drawImage(cv, 0, 0, small.width, small.height);
+      thumbImgs[t.id].src = small.toDataURL('image/png');
+    });
+  }
+
+  // step 1 grid
+  T.forEach(t => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'tile';
+    const th = document.createElement('span'); th.className = 'thumb';
+    const img = document.createElement('img'); img.alt = ''; thumbImgs[t.id] = img; th.appendChild(img);
+    const lb = document.createElement('span'); lb.className = 'lbl'; lb.textContent = META[t.id].e + ' ' + META[t.id].n;
+    b.append(th, lb);
+    b.addEventListener('click', () => {
+      S.tpl = t.id; renderFields();
+      if (S.photo || S.skipped) { show('done'); arrive(); } else show('photo');
+    });
+    $('grid').appendChild(b);
+  });
+
+  // sound (made in code, starts only after a tap)
+  let ac = null;
+  function audio() {
+    try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) { ac = null; }
+    return ac;
+  }
+  document.addEventListener('pointerdown', audio, { passive: true });
+  function thump() {
+    const a = audio(); if (!a) return;
+    try {
+      const t0 = a.currentTime, o = a.createOscillator(), g = a.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(170, t0); o.frequency.exponentialRampToValueAtTime(45, t0 + .2);
+      g.gain.setValueAtTime(.9, t0); g.gain.exponentialRampToValueAtTime(.001, t0 + .3);
+      o.connect(g).connect(a.destination); o.start(t0); o.stop(t0 + .32);
+      const n = a.createBuffer(1, a.sampleRate * .08, a.sampleRate), d = n.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      const s = a.createBufferSource(), ng = a.createGain(); s.buffer = n; ng.gain.value = .35;
+      s.connect(ng).connect(a.destination); s.start(t0);
+    } catch (e) {}
+  }
+  function pling() {
+    const a = audio(); if (!a) return;
+    try {
+      [880, 1175, 1568].forEach((f, i) => {
+        const t0 = a.currentTime + i * .09, o = a.createOscillator(), g = a.createGain();
+        o.type = 'triangle'; o.frequency.value = f;
+        g.gain.setValueAtTime(.25, t0); g.gain.exponentialRampToValueAtTime(.001, t0 + .35);
+        o.connect(g).connect(a.destination); o.start(t0); o.stop(t0 + .36);
+      });
+    } catch (e) {}
+  }
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function replay(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+  function arrive() {
+    msg.textContent = ''; draw();
+    const st = $('stamp'); st.textContent = META[S.tpl].stamp; st.hidden = false;
+    st.style.animation = 'none'; void st.offsetWidth; st.style.animation = '';
+    setTimeout(thump, reduced ? 0 : 400);
+    replay(preview, 'pop');
+  }
+  $('stamp').addEventListener('animationend', e => { e.target.hidden = true; });
+
+  function confetti() {
+    if (reduced) return;
+    const c = document.createElement('canvas'); c.className = 'confetti';
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    c.width = innerWidth * dpr; c.height = innerHeight * dpr; document.body.appendChild(c);
+    const x = c.getContext('2d'), cols = ['#ff7aa8', '#ffd36e', '#6fd3a6', '#8ab8ff', '#c9a2ff', '#e2557a'];
+    const P = Array.from({ length: 140 }, () => ({
+      x: c.width / 2 + (Math.random() - .5) * c.width * .3, y: c.height * .55,
+      vx: (Math.random() - .5) * 22 * dpr, vy: -(10 + Math.random() * 16) * dpr,
+      r: Math.random() * Math.PI, vr: (Math.random() - .5) * .4, s: (6 + Math.random() * 8) * dpr, c: pick(cols)
+    }));
+    const start = performance.now();
+    (function step(t) {
+      x.clearRect(0, 0, c.width, c.height);
+      P.forEach(p => {
+        p.vy += .55 * dpr; p.x += p.vx; p.y += p.vy; p.vx *= .99; p.r += p.vr;
+        x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.fillStyle = p.c; x.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); x.restore();
+      });
+      if (t - start < 2200) requestAnimationFrame(step); else c.remove();
+    })(start);
+  }
+
+  // grown-up fields
+  const fieldsEl = $('fields');
+  function renderFields() {
+    const t = byId[S.tpl]; fieldsEl.innerHTML = '';
+    const nl = document.createElement('label'); nl.className = 'wide'; nl.textContent = 'Navn';
+    const ni = document.createElement('input'); ni.id = 'f-name'; ni.value = S.name; ni.maxLength = 24; ni.autocomplete = 'off';
+    ni.addEventListener('input', () => { S.name = ni.value; draw(); });
+    nl.appendChild(ni); fieldsEl.appendChild(nl);
+    t.fields.forEach(fd => {
+      const l = document.createElement('label'); if (fd.wide) l.className = 'wide'; l.textContent = fd.l;
+      const i = document.createElement('input'); i.id = `f-${t.id}-${fd.k}`; i.value = S.vals[t.id][fd.k]; i.autocomplete = 'off';
+      i.maxLength = fd.num ? 2 : 48; if (fd.num) i.inputMode = 'numeric';
+      i.addEventListener('input', () => { S.vals[t.id][fd.k] = i.value; draw(); });
+      l.appendChild(i); fieldsEl.appendChild(l);
+    });
+  }
+
+  // photo
+  function setPhoto(img) {
+    S.photo = img; S.zoom = 1; S.off = { x: 0, y: 0 }; $('zoom').value = 1;
+    const has = !!img;
+    $('zoomRow').hidden = !has; $('panHint').hidden = !has;
+    preview.classList.toggle('pannable', has);
+  }
+  function loadFile(input) {
+    const file = input.files && input.files[0]; if (!file) return;
+    const img = new Image();
+    img.onload = () => { setPhoto(img); show('done'); arrive(); };
+    img.onerror = () => { $('photoTitle').textContent = 'Fikk ikke åpnet bildet. Prøv igjen!'; };
+    img.src = URL.createObjectURL(file); input.value = '';
+  }
+  $('cam').addEventListener('change', e => loadFile(e.target));
+  $('lib').addEventListener('change', e => loadFile(e.target));
+  $('skip').addEventListener('click', () => { S.skipped = true; show('done'); arrive(); });
+  $('zoom').addEventListener('input', e => { S.zoom = parseFloat(e.target.value); draw(); });
+
+  let drag = null;
+  preview.addEventListener('pointerdown', e => {
+    if (!S.photo) return; e.preventDefault(); preview.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY };
+  });
+  preview.addEventListener('pointermove', e => {
+    if (!drag || !frame) return;
+    const sc = cv.width / preview.getBoundingClientRect().width;
+    const cl = (v, m) => Math.max(-m, Math.min(m, v));
+    S.off.x = cl(S.off.x + (e.clientX - drag.x) * sc / frame.dw, frame.mx);
+    S.off.y = cl(S.off.y + (e.clientY - drag.y) * sc / frame.dh, frame.my);
+    drag = { x: e.clientX, y: e.clientY }; draw();
+  });
+  ['pointerup', 'pointercancel'].forEach(ev => preview.addEventListener(ev, () => drag = null));
+
+  // actions
+  function wiggle(btn) { const d = btn.querySelector('.d'); if (d && !reduced) { d.style.display = 'inline-block'; replay(d, 'shake'); } }
+  $('dice').addEventListener('click', e => {
+    const t = byId[S.tpl]; S.vals[t.id] = freshVals(t, S.vals[t.id]); renderFields(); draw();
+    wiggle(e.currentTarget); replay(preview, 'pop'); msg.textContent = '';
+  });
+  $('rename').addEventListener('click', e => {
+    S.name = genName(); renderFields(); draw(); wiggle(e.currentTarget); replay(preview, 'pop'); msg.textContent = '';
+  });
+  $('next').addEventListener('click', () => {
+    S.name = genName(); S.skipped = false;
+    T.forEach(t => S.vals[t.id] = freshVals(t, S.vals[t.id]));
+    setPhoto(null); renderFields(); show('photo');
+  });
+  $('swap').addEventListener('click', () => show('pick'));
+  $('back').addEventListener('click', () => show('pick'));
+
+  async function saveImage() {
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    const safe = (S.name.trim() || 'kosedyr').replace(/[^\wæøåÆØÅ-]+/g, '-');
+    const name = `${S.tpl}-${safe}.png`;
+    let dl = null;
+    try { dl = window.claude ? await window.claude.use('downloads') : null; } catch (e) { dl = null; }
+    if (dl) {
+      try { await dl.save({ filename: name, data: blob }); return 'saved'; }
+      catch (e) { if (e && e.code === 'declined') return 'cancel'; if (e && e.code === 'rate_limited') return 'wait'; return 'fail'; }
+    }
+    if (window.claude) return 'fail';
+    const file = new File([blob], name, { type: 'image/png' });
+    if (matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file] }); return 'saved'; }
+      catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
+    }
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return 'saved';
+  }
+  $('save').addEventListener('click', async () => {
+    renderNow(S.tpl);
+    const r = await saveImage().catch(() => 'fail');
+    if (r === 'saved') { msg.textContent = 'Lagret! 🎉'; pling(); confetti(); }
+    else if (r === 'wait') msg.textContent = 'Vent litt og prøv igjen.';
+    else if (r === 'fail') $('hint').hidden = false;
+    else msg.textContent = '';
+  });
+
+  renderFields(); show('pick');
+  if (document.fonts) {
+    Promise.all(['700 50px Fredoka', '600 20px Fredoka', '500 20px Fredoka', '700 58px Caveat', '700 34px "Courier Prime"']
+      .map(s => document.fonts.load(s).catch(() => {}))).then(() => { if (screen === 'pick') renderThumbs(); else draw(); });
+  }
+})();
+</script>
+</body>
+</html>
